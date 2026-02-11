@@ -10,7 +10,7 @@ public class BicForm: Form {
 
     private string serverHost = "irc.undernet.org";
     private int serverPort = 6667;
-    private string nick = "frio";
+    private string nick = "fria";
     private string currentChannel = "#pantasya";
     private string currentTarget = "#pantasya";
     private bool connected = false;
@@ -75,7 +75,8 @@ public class BicForm: Form {
         foreach (string line in lines) {
             if (string.IsNullOrWhiteSpace(line)) continue;
             
-            // REMOVED: No longer display raw IRC messages
+            // Display ALL raw IRC messages (without color codes)
+            SendText("> " + ircCodesRegex.Replace(line.Trim(), "") + "\r\n", Color.Gray);
             
             // Handle PING/PONG
             if (line.Contains("PING")) {

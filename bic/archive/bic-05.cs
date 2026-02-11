@@ -24,7 +24,7 @@ public class BicForm: Form {
 
     public BicForm() {
         InitializeComponent();
-//        ConnectToServer();
+        ConnectToServer();
     }
 
     private void ConnectToServer() {
@@ -221,15 +221,10 @@ public class BicForm: Form {
                 string namesTarget = parts.Length >= 2 ? parts[1] : currentTarget;
                 SendRaw($"NAMES {namesTarget}");
                 break;
-			case "quit": {
-				string reason = "";
-				if (parts.Length >= 2) {
-					reason = string.Join(" ", parts, 1, parts.Length - 1);
-				}
-				SendRaw("QUIT :" + reason);
-				Close();
-				break;
-			}
+            case "quit":
+                SendRaw("QUIT :Bic Client");
+                Close();
+                break;
             default:
                 // Regular message to current target
                 SendRaw($"PRIVMSG {currentTarget} :{input}");

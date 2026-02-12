@@ -11,8 +11,10 @@ public class BicForm: Form {
 
     private string serverHost = "irc.undernet.org";
     private int serverPort = 6667;
-    private string nick = "frio";
-    private string user = "frio";
+    private string nick = "fria";
+    private string user = "fria";
+
+
 
     public RichTextBox chatBox;
     public TextBox inputBox;
@@ -22,6 +24,8 @@ public class BicForm: Form {
     private bool connected = false;
     private HashSet<string> channels = new HashSet<string>();
     private string currentTarget;
+
+
 
     public BicForm() {
         InitializeComponent();
@@ -64,6 +68,7 @@ public class BicForm: Form {
         Controls.Add(inputBox);
 
         CenterToScreen();
+//        AppendChat("Type /connect irc.libera.chat:6667 to start");
     }
 
     private void connect() {
@@ -72,17 +77,17 @@ public class BicForm: Form {
             client = new TcpClient(serverHost, serverPort);
             stream = client.GetStream();
             connected = true;
-
+            
             SendRaw("NICK " + nick + "\r\n");
             SendRaw("USER " + user + " 0 * :Bic IRC Client\r\n");
-
+            
             receiveThread = new Thread(ReceiveMessages);
             receiveThread.IsBackground = true;
             receiveThread.Start();
-
-            AppendChat("<connected to " + serverHost + ":" + serverPort + ">", Color.Green);
+            
+            AppendChat("<connected to " + serverHost + ":" + serverPort + ">");
         } catch (Exception ex) {
-            AppendError("<connect failed: " + ex.Message + ">");
+            AppendChat("<connect failed: " + ex.Message + ">");
         }
     }
 
@@ -93,7 +98,7 @@ public class BicForm: Form {
         if (receiveThread != null && receiveThread.IsAlive) receiveThread.Join(1000);
         channels.Clear();
         currentTarget = null;
-        AppendChat("<disconnected>", Color.Yellow);
+        AppendChat("<disconnected>");
     }
 
     private void SendRaw(string message) {
@@ -113,7 +118,7 @@ public class BicForm: Form {
 
                 string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
                 string[] lines = message.Split(new char[] {'\r', '\n'}, StringSplitOptions.RemoveEmptyEntries);
-
+                
                 foreach (string line in lines) {
                     if (!string.IsNullOrEmpty(line)) {
                         ParseIRCMessage(line);
@@ -154,7 +159,7 @@ public class BicForm: Form {
                 channels.Remove(channel);
             }
         } else {
-            AppendServer(raw.Trim());
+            AppendChat(raw.Trim());
         }
     }
 
@@ -162,17 +167,18 @@ public class BicForm: Form {
         try {
             int privmsgIndex = raw.IndexOf(" PRIVMSG ");
             int colonIndex = raw.IndexOf(" :", privmsgIndex);
-
+            
             string target = raw.Substring(privmsgIndex + 9, colonIndex - privmsgIndex - 9).Trim();
             string sender = raw.Substring(1, raw.IndexOf('!') - 1);
             string message = raw.Substring(colonIndex + 2).Trim();
 
+            // Strip IRC color and formatting codes
             message = StripIrcCodes(message);
 
             string display = "[" + target + "] <" + sender + "> " + message;
-            AppendChat(display, Color.White);
+            AppendChat(display);
         } catch {
-            AppendError(raw.Trim());
+            AppendChat(raw.Trim());
         }
     }
 
@@ -185,50 +191,26 @@ public class BicForm: Form {
     }
 
     private string StripIrcCodes(string message) {
+        // Remove mIRC color codes: \x03 followed by optional 1-2 digits, optional comma + 1-2 digits
         message = Regex.Replace(message, @"\x03(\d{1,2}(?:,\d{1,2})?)?", "");
+        
+        // Remove common formatting codes: bold, italic, underline, reverse, strikethrough, reset
         message = Regex.Replace(message, "[\x02\x0F\x12\x16\x1D\x1F]", "");
+        
+        // Remove other control codes (CTCP, etc.)
         message = Regex.Replace(message, "[\x01-\x09\x0B-\x1F]", "");
+        
         return message;
     }
 
-    private void AppendChat(string text, Color foreColor = default(Color)) {
+    private void AppendChat(string text) {
         if (InvokeRequired) {
-            Invoke(new Action<string, Color>(AppendChat), text, foreColor);
+            Invoke(new Action<string>(AppendChat), text);
             return;
         }
-
-        if (foreColor == default(Color))
-            foreColor = Color.LimeGreen;
-
-        int start = chatBox.TextLength;
         chatBox.AppendText(text + Environment.NewLine);
-
-        chatBox.Select(start, text.Length);
-        chatBox.SelectionColor = foreColor;
-        chatBox.SelectionLength = 0;
-
         chatBox.SelectionStart = chatBox.Text.Length;
         chatBox.ScrollToCaret();
-    }
-
-    private void AppendChat(string text) {
-        AppendChat(text, Color.LimeGreen);
-    }
-
-    private void AppendSystem(string text) {
-        AppendChat(text, Color.Yellow);
-    }
-
-    private void AppendError(string text) {
-        AppendChat(text, Color.Red);
-    }
-
-    private void AppendServer(string text) {
-        AppendChat(text, Color.Cyan);
-    }
-
-    private void AppendUser(string text) {
-        AppendChat(text, Color.White);
     }
 
     private void BicForm_KeyDown(object sender, KeyEventArgs e) {
@@ -238,29 +220,29 @@ public class BicForm: Form {
         }
     }
 
-    private void InputBox_KeyPress(object sender, KeyPressEventArgs e) {
-        if (e.KeyChar == 13) {
-            e.Handled = true;
-            string text = inputBox.Text.Trim();
-            if (!string.IsNullOrEmpty(text)) {
-                if (text.StartsWith("/")) {
-                    HandleCommand(text);
-                } else if (connected) {
-                    if (!string.IsNullOrEmpty(currentTarget)) {
-                        SendRaw("PRIVMSG " + currentTarget + " :" + text + "\r\n");
-                        AppendUser("[" + currentTarget + "] <" + nick + "> " + text);
-                    } else if (channels.Count > 0) {
-                        string target = new List<string>(channels)[0];
-                        SendRaw("PRIVMSG " + target + " :" + text + "\r\n");
-                        AppendUser("[" + target + "] <" + nick + "> " + text);
-                    } else {
-                        AppendError("<no target/channel set>");
-                    }
-                }
-            }
-            inputBox.Text = "";
-        }
-    }
+	private void InputBox_KeyPress(object sender, KeyPressEventArgs e) {
+		if (e.KeyChar == 13) {
+		    e.Handled = true;
+		    string text = inputBox.Text.Trim();
+		    if (!string.IsNullOrEmpty(text)) {
+		        if (text.StartsWith("/")) {
+		            HandleCommand(text);
+		        } else if (connected) {
+		            if (!string.IsNullOrEmpty(currentTarget)) {
+		                SendRaw("PRIVMSG " + currentTarget + " :" + text + "\r\n");
+		                AppendChat("<" + nick + "> " + text);
+		            } else if (channels.Count > 0) {
+		                string target = new List<string>(channels)[0];
+		                SendRaw("PRIVMSG " + target + " :" + text + "\r\n");
+		                AppendChat("<" + nick + "> " + text);
+		            } else {
+		                AppendChat("<no target/channel set>");
+		            }
+		        }
+		    }
+		    inputBox.Text = "";
+		}
+	}
 
     private void HandleCommand(string cmd) {
         var parts = cmd.Split(new char[] {' '}, StringSplitOptions.RemoveEmptyEntries);
@@ -275,79 +257,70 @@ public class BicForm: Form {
                 }
                 connect();
                 break;
-
+                
             case "/disconnect":
                 disconnect();
                 break;
-
+                
             case "/list":
-                AppendSystem("Channels: " + string.Join(", ", channels));
+                AppendChat("Channels: " + string.Join(", ", channels));
                 break;
-
+                
             case "/part":
                 if (parts.Length > 1 && channels.Contains(parts[1])) {
                     SendRaw("PART " + parts[1] + "\r\n");
                     channels.Remove(parts[1]);
                     if (currentTarget == parts[1]) currentTarget = null;
-                    AppendSystem(">>> parted " + parts[1]);
+                    AppendChat(">>> parted " + parts[1]);
                 } else {
-                    AppendError("Usage: /part #channel");
+                    AppendChat("Usage: /part #channel");
                 }
                 break;
-
-			case "/target":
-				if (parts.Length > 1) {
-					string newTarget = parts[1];
-					// Allow: #channel, or plain nickname (no !host allowed anymore)
-					if (newTarget.StartsWith("#")) {
-						if (channels.Contains(newTarget)) {
-						    currentTarget = newTarget;
-						    AppendSystem(">>> target set to " + newTarget);
-						} else {
-						    AppendError("Usage: /target #channel (must be joined)");
-						}
-					} else {
-						// Treat as PM target: just a nick, not user!host
-						currentTarget = newTarget;
-						AppendSystem(">>> PM target: " + newTarget);
-					}
-				} else {
-					AppendSystem("Current target: " + (currentTarget ?? "none"));
-				}
-				break;
-
+                
+            case "/target":
+                if (parts.Length > 1) {
+                    string newTarget = parts[1];
+                    if (newTarget.StartsWith("#") && channels.Contains(newTarget)) {
+                        currentTarget = newTarget;
+                        AppendChat(">>> target set to " + newTarget);
+                    } else if (newTarget.Contains("!")) {
+                        currentTarget = newTarget;
+                        AppendChat(">>> PM target: " + newTarget);
+                    } else {
+                        AppendChat("Usage: /target #channel or /target user!host");
+                    }
+                } else {
+                    AppendChat("Current target: " + (currentTarget ?? "none"));
+                }
+                break;
+                
             case "/join":
                 if (parts.Length > 1) {
                     SendRaw("JOIN " + parts[1] + "\r\n");
-                    AppendSystem(">>> joining " + parts[1]);
+                    AppendChat(">>> joining " + parts[1]);
                     currentTarget = parts[1];
                 }
                 break;
-
+                
             case "/nick":
                 if (parts.Length > 1) {
                     nick = parts[1];
                     SendRaw("NICK " + nick + "\r\n");
-                    AppendSystem(">>> nick: " + nick);
+                    AppendChat(">>> nick: " + nick);
                 }
                 break;
-
-			case "/quit":
-		        string quitMessage = "Bic IRC Client";
-		        if (parts.Length > 1) {
-		            quitMessage = string.Join(" ", parts, 1, parts.Length - 1);
-		        }
-		        SendRaw("QUIT :" + quitMessage + "\r\n");
-		        disconnect();
-		        Close();
-		        break;
-
-            case "/help":
-                AppendSystem("/connect host:port, /disconnect, /list, /part #chan, /target #chan|user, /join #chan, /nick name, /quit, /help");
+                
+            case "/quit":
+                disconnect();
+                Close();
                 break;
-
+                
+            case "/help":
+                AppendChat("/connect host:port, /disconnect, /list, /part #chan, /target #chan|user, /join #chan, /nick name, /quit, /help");
+                break;
+                
             default:
-                AppendError("<unknown: " + cmd + ">");
+                AppendChat("<unknown: " + cmd + ">");
                 break;
         }
     }

@@ -72,14 +72,14 @@ public class BicForm: Form {
             client = new TcpClient(serverHost, serverPort);
             stream = client.GetStream();
             connected = true;
-
+            
             SendRaw("NICK " + nick + "\r\n");
             SendRaw("USER " + user + " 0 * :Bic IRC Client\r\n");
-
+            
             receiveThread = new Thread(ReceiveMessages);
             receiveThread.IsBackground = true;
             receiveThread.Start();
-
+            
             AppendChat("<connected to " + serverHost + ":" + serverPort + ">", Color.Green);
         } catch (Exception ex) {
             AppendError("<connect failed: " + ex.Message + ">");
@@ -113,7 +113,7 @@ public class BicForm: Form {
 
                 string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
                 string[] lines = message.Split(new char[] {'\r', '\n'}, StringSplitOptions.RemoveEmptyEntries);
-
+                
                 foreach (string line in lines) {
                     if (!string.IsNullOrEmpty(line)) {
                         ParseIRCMessage(line);
@@ -162,7 +162,7 @@ public class BicForm: Form {
         try {
             int privmsgIndex = raw.IndexOf(" PRIVMSG ");
             int colonIndex = raw.IndexOf(" :", privmsgIndex);
-
+            
             string target = raw.Substring(privmsgIndex + 9, colonIndex - privmsgIndex - 9).Trim();
             string sender = raw.Substring(1, raw.IndexOf('!') - 1);
             string message = raw.Substring(colonIndex + 2).Trim();
@@ -196,17 +196,17 @@ public class BicForm: Form {
             Invoke(new Action<string, Color>(AppendChat), text, foreColor);
             return;
         }
-
-        if (foreColor == default(Color))
+        
+        if (foreColor == default(Color)) 
             foreColor = Color.LimeGreen;
-
+        
         int start = chatBox.TextLength;
         chatBox.AppendText(text + Environment.NewLine);
-
+        
         chatBox.Select(start, text.Length);
         chatBox.SelectionColor = foreColor;
         chatBox.SelectionLength = 0;
-
+        
         chatBox.SelectionStart = chatBox.Text.Length;
         chatBox.ScrollToCaret();
     }
@@ -275,15 +275,15 @@ public class BicForm: Form {
                 }
                 connect();
                 break;
-
+                
             case "/disconnect":
                 disconnect();
                 break;
-
+                
             case "/list":
                 AppendSystem("Channels: " + string.Join(", ", channels));
                 break;
-
+                
             case "/part":
                 if (parts.Length > 1 && channels.Contains(parts[1])) {
                     SendRaw("PART " + parts[1] + "\r\n");
@@ -294,7 +294,7 @@ public class BicForm: Form {
                     AppendError("Usage: /part #channel");
                 }
                 break;
-
+                
 			case "/target":
 				if (parts.Length > 1) {
 					string newTarget = parts[1];
@@ -315,7 +315,7 @@ public class BicForm: Form {
 					AppendSystem("Current target: " + (currentTarget ?? "none"));
 				}
 				break;
-
+                
             case "/join":
                 if (parts.Length > 1) {
                     SendRaw("JOIN " + parts[1] + "\r\n");
@@ -323,7 +323,7 @@ public class BicForm: Form {
                     currentTarget = parts[1];
                 }
                 break;
-
+                
             case "/nick":
                 if (parts.Length > 1) {
                     nick = parts[1];
@@ -331,7 +331,7 @@ public class BicForm: Form {
                     AppendSystem(">>> nick: " + nick);
                 }
                 break;
-
+                
 			case "/quit":
 		        string quitMessage = "Bic IRC Client";
 		        if (parts.Length > 1) {
@@ -340,12 +340,12 @@ public class BicForm: Form {
 		        SendRaw("QUIT :" + quitMessage + "\r\n");
 		        disconnect();
 		        Close();
-		        break;
-
+		        break;                
+        
             case "/help":
                 AppendSystem("/connect host:port, /disconnect, /list, /part #chan, /target #chan|user, /join #chan, /nick name, /quit, /help");
                 break;
-
+                
             default:
                 AppendError("<unknown: " + cmd + ">");
                 break;

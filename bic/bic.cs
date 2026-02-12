@@ -384,9 +384,11 @@ public class BicForm: Form {
 		        Close();
 		        break;
 
+/*
             case "/help":
                 AppendSystem("/connect host:port, /disconnect, /list, /part #chan, /target #chan|user, /join #chan, /nick name, /quit, /help");
                 break;
+*/
 
             default:
                 AppendError("<unknown: " + cmd + ">");

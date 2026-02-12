@@ -46,9 +46,7 @@ public class BicForm: Form {
             Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
             TabStop = true,
             TabIndex = 1,
-            DetectUrls = true,
         };
-        chatBox.LinkClicked += ChatBox_LinkClicked;
         Controls.Add(chatBox);
 
         inputBox = new TextBox() {
@@ -67,12 +65,6 @@ public class BicForm: Form {
 
         CenterToScreen();
     }
-
-	private void ChatBox_LinkClicked(object sender, LinkClickedEventArgs e)
-	{
-		// Open the link in the default browser
-		System.Diagnostics.Process.Start(e.LinkText);
-	}	
 
     private void connect() {
         try {
@@ -232,7 +224,7 @@ public class BicForm: Form {
     }
 
     private void AppendServer(string text) {
-        AppendChat(text, Color.Blue);
+        AppendChat(text, Color.Cyan);
     }
 
     private void AppendUser(string text) {

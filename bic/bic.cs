@@ -26,7 +26,6 @@ public class BicForm: Form {
 
     public BicForm() {
         InitializeComponent();
-		Resize += BicForm_Resize;
     }
 
     private void InitializeComponent() {
@@ -69,10 +68,6 @@ public class BicForm: Form {
 
         CenterToScreen();
     }
-
-	private void BicForm_Resize(object sender, EventArgs e) {
-		chatBox.ScrollToCaret();
-	}
 
 	private void ChatBox_LinkClicked(object sender, LinkClickedEventArgs e)
 	{

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Windows.Forms;
@@ -25,6 +26,7 @@ public class BicForm: Form {
 
     public BicForm() {
         InitializeComponent();
+		Resize += BicForm_Resize;
     }
 
     private void InitializeComponent() {
@@ -68,13 +70,17 @@ public class BicForm: Form {
         CenterToScreen();
     }
 
+	private void BicForm_Resize(object sender, EventArgs e) {
+		chatBox.ScrollToCaret();
+	}
+
 	private void ChatBox_LinkClicked(object sender, LinkClickedEventArgs e)
 	{
 		// Open the link in the default browser
 		System.Diagnostics.Process.Start(e.LinkText);
 	}	
 
-    private void connect() {
+    private void Connect() {
         try {
             if (client != null) client.Close();
             client = new TcpClient(serverHost, serverPort);
@@ -94,7 +100,7 @@ public class BicForm: Form {
         }
     }
 
-    private void disconnect() {
+    private void Disconnect() {
         connected = false;
         if (client != null) client.Close();
         stream = null;
@@ -205,6 +211,15 @@ public class BicForm: Form {
             return;
         }
 
+		int maxLines = 4096;
+		if (chatBox.Lines.Length > maxLines)
+		{
+			// Copy current lines, remove from the top
+			var lines = chatBox.Lines.ToList();
+			lines.RemoveRange(0, lines.Count - maxLines);
+			chatBox.Lines = lines.ToArray();
+		}
+
         if (foreColor == default(Color))
             foreColor = Color.LimeGreen;
 
@@ -241,7 +256,7 @@ public class BicForm: Form {
 
     private void BicForm_KeyDown(object sender, KeyEventArgs e) {
         if (e.KeyCode == Keys.Escape) {
-            disconnect();
+            Disconnect();
             Close();
         }
     }
@@ -281,11 +296,11 @@ public class BicForm: Form {
                     serverHost = hostport[0];
                     serverPort = hostport.Length > 1 ? int.Parse(hostport[1]) : 6667;
                 }
-                connect();
+                Connect();
                 break;
 
             case "/disconnect":
-                disconnect();
+                Disconnect();
                 break;
 
             case "/list":
@@ -340,13 +355,25 @@ public class BicForm: Form {
                 }
                 break;
 
+			case "/msg":
+				if (parts.Length > 2) {
+					string target = parts[1];
+					string message = string.Join(" ", parts, 2, parts.Length - 2);
+					SendRaw("PRIVMSG " + target + " :" + message + "\\r\\n");
+					AppendUser("->" + target + " <" + nick + "> " + message);
+					AppendSystem(">>> msg sent to " + target);
+				} else {
+					AppendError("Usage: /msg <#channel|user> message");
+				}
+				break;
+
 			case "/quit":
 		        string quitMessage = "Bic IRC Client";
 		        if (parts.Length > 1) {
 		            quitMessage = string.Join(" ", parts, 1, parts.Length - 1);
 		        }
 		        SendRaw("QUIT :" + quitMessage + "\r\n");
-		        disconnect();
+		        Disconnect();
 		        Close();
 		        break;
 
@@ -361,7 +388,7 @@ public class BicForm: Form {
     }
 
     protected override void Dispose(bool disposing) {
-        disconnect();
+        Disconnect();
         base.Dispose(disposing);
     }
 
